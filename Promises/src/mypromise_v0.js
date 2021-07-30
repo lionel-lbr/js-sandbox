@@ -6,10 +6,9 @@ class MyPromise {
     this.onFulfilled ;
     
     if (fct) {
-      // invoke inner function 
+      // invoke inner function and pass resolve() and reject() as arrow function to capture the this.
       fct(
         (r) => {
-          // pass arrow function to capture the: this
           this.resolve(r);
         },
         (e) => {
@@ -62,6 +61,8 @@ class MyPromise {
   }
 }
 
+
+// global variables to track end of the last promise
 var isLastPromiseFulfilled = false;
 var isLastPromiseRejected = false;
 var isLastPromisePending = true;
@@ -71,39 +72,29 @@ const p1 = new MyPromise((resolve, reject) => {
   console.log("Start Promise inner function, will resolve in 5s");
   setTimeout(() => {
     resolve("Resolved");
-  }, 5 * 1000); // delay resolve by 5 seconds
+  }, 5 * 1000); // P1 -> delay resolve by 5 seconds
 });
 
-// build a promise chain
-const p2 = p1.then((r) => {
-  console.log(`P1 fulfilled:${r}`);
-  return `P1:${r}`;
-});
-const p3 = p2.then((r) => {
-  console.log(`P2 fulfilled:${r}`);
-  return `P2:${r}`;
-});
-const p4 = p3.then((r) => {
-  console.log(`P3 fulfilled:${r}`);
-  return `P3:${r}`;
-});
+// build a promise chain, each call to .then() return a new Promise.
+const p2 = p1.then((r) => (`P1:${r}`));   // Promise 2 -> will resolve with: P1:Resolve
+const p3 = p2.then((r) => (`P2:${r}`));   // Promise 3 -> will resolve with: P2:P1:Resolve
+const p4 = p3.then((r) => (`P3:${r}`));   // Promise 4 -> will resolve with: P3:P2:P1:Resolve
+
 p4.then((r) => {
-  console.log(`Last Promise fulfilled:${r}`);
+  // toggle global var to track end of last promise
   isLastPromiseFulfilled = true;
   isLastPromisePending = false;
-  return `Last Promise:${r}`;
+  console.log(`-> P4:${r}`);   // P4 will display: -> P4:P3:P2:P1:Resolve 
 });
 
-// logging loop
+//  Create an interval to display promise's status every second.
 var logCount = 1;
 console.log("Start logging");
 var interval = setInterval(() => {
-  console.log(`${logCount} ---------------------------`);
-  console.log(`P1:${p1}, P2:${p2}, P3:${p3}`);
-  console.log(`P4:${p4}`);
-  // console.log(p1, p2, p3);
-  // console.log(p4);
+  console.log(`${logCount++} ---------------------------`);
+  console.log(`P1:${p1}, P2:${p2}, P3:${p3}, P4:${p4}`);
   logCount++;
+  // clear interval if the last promise has been fulfilled.
   if (!isLastPromisePending) {
     clearInterval(interval);
     console.log("End of logging");
